@@ -1,0 +1,28 @@
+{
+  "name": "glab2gh-monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/web"
+  ],
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "build": "npm run build --workspace=@glab2gh/core --workspace=@glab2gh/cli",
+    "test": "npm run test --workspace=@glab2gh/core",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "cli": "npm run dev --workspace=@glab2gh/cli --",
+    "web:dev": "npm run build --workspace=@glab2gh/core && npm run dev --workspace=@glab2gh/web",
+    "web:build": "npm run build --workspace=@glab2gh/core && npm run build --workspace=@glab2gh/web",
+    "web:start": "npm run start --workspace=@glab2gh/web"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.4"
+  }
+}

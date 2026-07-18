@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.glab2gh-state.json
+.glab2gh-work/
+*.log
+migration-report.md
+.env
+
+# apps/web
+apps/web/.next/
+apps/web/data/

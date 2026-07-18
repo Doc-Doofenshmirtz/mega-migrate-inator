@@ -1,0 +1,47 @@
+# glab2gh configuration
+#
+# Tokens are never stored here. Set them via environment variables before
+# running any command:
+#   GITLAB_TOKEN  - GitLab PAT with `api`, `read_repository` scopes
+#                   (needs Maintainer on a project for its CI/CD variables)
+#   GITHUB_TOKEN  - GitHub PAT with `repo`, `admin:org` (org targets),
+#                   and secrets scope (classic), or the fine-grained
+#                   equivalents: contents RW, administration RW, secrets RW.
+
+gitlab:
+  url: https://gitlab.mycompany.com
+  insecure_tls: false            # true only for self-signed certs; prints a warning
+
+github:
+  api_url: https://api.github.com   # point at a GHE instance's API URL if needed
+
+source:
+  mode: group                    # group | list | all
+  group: my-group                # required if mode: group; includes subgroups recursively
+  include_archived: false
+  projects: []                   # required if mode: list, e.g. ["group/proj-a", "group/sub/proj-b"]
+  exclude: []                    # glob patterns against full path, e.g. ["group/legacy-*"]
+  skip_forks: false
+
+target:
+  owner: my-github-org           # org name OR username; auto-detected via the GitHub API
+  visibility: private            # private | public | inherit
+  name_template: "{group_path}-{name}"   # tokens: {name} {group_path} {namespace}
+  topics_from_gitlab_topics: true
+  collision: fail                # fail | skip | suffix
+
+migrate:
+  ci_variables: true
+  ci_variables_as: secrets       # secrets | variables | auto
+  group_variables: true
+  lfs: auto                      # auto | on | off
+  wiki: false
+  releases: false
+  branch_protection: true
+  webhooks: false
+  archive_source: false
+  set_gitlab_description: ""     # e.g. "MIGRATED to {github_url}"
+
+run:
+  concurrency: 3
+  workdir: ./.glab2gh-work

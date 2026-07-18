@@ -1,0 +1,23 @@
+services:
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    # Host-side binding restricted to loopback: reachable at localhost:3000
+    # on this machine only, never on the network, regardless of what HOST is
+    # set to inside the container (which Docker's own networking requires
+    # to be 0.0.0.0 — see docker-entrypoint.sh for why that's still safe).
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      HOST: "0.0.0.0"
+      PORT: "3000"
+      # Set your own password to skip the auto-generated one printed in the
+      # logs on first boot:
+      GLAB2GH_AUTH_PASSWORD: "password"
+    volumes:
+      - glab2gh-data:/app/apps/web/data
+    restart: unless-stopped
+
+volumes:
+  glab2gh-data:

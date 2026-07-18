@@ -1,0 +1,28 @@
+{
+  "name": "@glab2gh/cli",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Bulk migration CLI: self-hosted GitLab -> GitHub",
+  "type": "module",
+  "bin": {
+    "glab2gh": "./dist/index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx src/index.ts",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@glab2gh/core": "*",
+    "commander": "^13.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}
