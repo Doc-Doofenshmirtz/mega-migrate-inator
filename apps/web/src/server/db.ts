@@ -43,6 +43,7 @@ CREATE TABLE IF NOT EXISTS log_lines (
 );
 CREATE INDEX IF NOT EXISTS idx_log_lines_run ON log_lines(run_id, id);
 CREATE INDEX IF NOT EXISTS idx_repo_tasks_run ON repo_tasks(run_id);
+CREATE INDEX IF NOT EXISTS idx_repo_tasks_path ON repo_tasks(repo_path);
 `;
 
 function openDb(): DatabaseSync {

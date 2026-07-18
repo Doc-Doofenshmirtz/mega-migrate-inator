@@ -7,6 +7,7 @@ import { GroupTree } from "./group-tree";
 import { RepoTable } from "./repo-table";
 import { Button } from "@/components/ui/button";
 import { getSelectedRepos, setSelectedRepos } from "@/lib/wizardDraft";
+import type { RepoMigrationStatus } from "@/lib/types";
 
 function formatBytes(bytes: number): string {
   if (bytes < 1_000_000) return `${(bytes / 1000).toFixed(0)} KB`;
@@ -18,11 +19,19 @@ export function SelectClient() {
   const [group, setGroup] = useState<GitlabGroupRef | null>(null);
   const [selected, setSelected] = useState<Map<string, GitlabProject>>(new Map());
   const [hydrated, setHydrated] = useState(false);
+  const [repoStatus, setRepoStatus] = useState<Record<string, RepoMigrationStatus>>({});
 
   useEffect(() => {
     const initial = getSelectedRepos();
     setSelected(new Map(initial.map((p) => [p.pathWithNamespace, p])));
     setHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/repos/status")
+      .then((r) => r.json())
+      .then((data) => setRepoStatus(data.statuses ?? {}))
+      .catch(() => {}); // best-effort — the picker still works with no status info
   }, []);
 
   useEffect(() => {
@@ -46,7 +55,7 @@ export function SelectClient() {
           <GroupTree selectedGroupId={group?.id ?? null} onSelectGroup={setGroup} />
         </div>
         <div className="p-3 flex flex-col">
-          <RepoTable group={group} selected={selected} onSelectionChange={setSelected} />
+          <RepoTable group={group} selected={selected} onSelectionChange={setSelected} repoStatus={repoStatus} />
         </div>
       </div>
 

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/cn";
+import type { RepoMigrationStatus } from "@/lib/types";
 
 function formatBytes(bytes: number | null): string {
   if (bytes === null) return "—";
@@ -26,9 +27,27 @@ interface RepoTableProps {
   group: GitlabGroupRef | null;
   selected: Map<string, GitlabProject>;
   onSelectionChange: (selected: Map<string, GitlabProject>) => void;
+  repoStatus: Record<string, RepoMigrationStatus>;
 }
 
-export function RepoTable({ group, selected, onSelectionChange }: RepoTableProps) {
+function MigrationStatusBadge({ status }: { status: RepoMigrationStatus | undefined }) {
+  if (!status) return <span style={{ color: "var(--color-muted)" }}>—</span>;
+  const date = new Date(status.updatedAt).toISOString().slice(0, 10);
+  if (status.bucket === "done") {
+    return (
+      <Badge tone="success" title={`Migrated to ${status.targetOwner}/${status.targetName} on ${date}`}>
+        migrated
+      </Badge>
+    );
+  }
+  return (
+    <Badge tone="danger" title={`Last attempt on ${date} did not finish cleanly — safe to re-run`}>
+      retry
+    </Badge>
+  );
+}
+
+export function RepoTable({ group, selected, onSelectionChange, repoStatus }: RepoTableProps) {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [includeArchived, setIncludeArchived] = useState(false);
@@ -161,6 +180,7 @@ export function RepoTable({ group, selected, onSelectionChange }: RepoTableProps
       <div className="flex items-center gap-2 px-2 py-1.5 text-xs font-medium border-b" style={{ color: "var(--color-muted)" }}>
         <Checkbox checked={allLoadedSelected} onChange={toggleSelectAllLoaded} aria-label="Select all loaded" />
         <div className="flex-1">Project</div>
+        <div className="w-20 text-right">Status</div>
         <div className="w-20 text-right">Visibility</div>
         <div className="w-20 text-right">Size</div>
         <div className="w-24 text-right">Last activity</div>
@@ -181,6 +201,9 @@ export function RepoTable({ group, selected, onSelectionChange }: RepoTableProps
                 <Checkbox checked={isSelected} onChange={() => toggle(p)} onClick={(e) => e.stopPropagation()} />
                 <div className="flex-1 min-w-0">
                   <div className="truncate">{p.pathWithNamespace}</div>
+                </div>
+                <div className="w-20 text-right">
+                  <MigrationStatusBadge status={repoStatus[p.pathWithNamespace]} />
                 </div>
                 <div className="w-20 text-right">
                   <Badge tone={p.visibility === "public" ? "accent" : "neutral"}>{p.visibility}</Badge>
