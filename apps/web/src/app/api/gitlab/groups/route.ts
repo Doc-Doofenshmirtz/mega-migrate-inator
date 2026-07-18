@@ -13,6 +13,6 @@ export async function GET(req: Request) {
     const groups = parentId ? await listSubgroups(api, parentId) : await listTopLevelGroups(api);
     return NextResponse.json({ groups });
   } catch (err) {
-    return errorResponse(err);
+    return errorResponse(err, "gitlab.groups");
   }
 }

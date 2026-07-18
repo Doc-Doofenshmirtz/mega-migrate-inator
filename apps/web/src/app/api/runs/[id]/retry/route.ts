@@ -36,6 +36,6 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     if (err instanceof BlockingCollisionsError) {
       return NextResponse.json({ error: err.message, blockingErrors: err.blockingErrors }, { status: 400 });
     }
-    return errorResponse(err);
+    return errorResponse(err, "runs.retry");
   }
 }

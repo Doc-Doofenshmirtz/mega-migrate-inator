@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { redact } from "@glab2gh/core";
+import { redact, logger } from "@glab2gh/core";
 import { setGitlabConnection, setGithubConnection } from "@/server/settings";
 import { createGitlabApi, createGithubApi } from "@/server/clients";
 
@@ -105,6 +105,10 @@ export async function POST(req: Request) {
     // createGitlabApi/createGithubApi above, so this scrubs it if an error
     // ever echoed it back (e.g. in a request URL) — never send tokens to the browser.
     const message = redact(err instanceof Error ? err.message : String(err));
+    logger.error(
+      { context: "connections.test", kind: parsed.data.kind, stack: err instanceof Error ? err.stack : undefined },
+      `[api] connections.test (${parsed.data.kind}) failed: ${message}`,
+    );
     return NextResponse.json({ ok: false, error: `Connection test failed: ${message}` }, { status: 200 });
   }
 }

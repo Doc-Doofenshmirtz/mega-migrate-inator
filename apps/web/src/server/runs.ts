@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import path from "node:path";
-import { discoverProjects, getExistingGithubRepoNames, createGitlabClient, createGithubClient } from "@glab2gh/core";
+import { discoverProjects, getExistingGithubRepoNames, createGitlabClient, createGithubClient, logger } from "@glab2gh/core";
 import { getGitlabConnection, getGithubConnection } from "./settings";
 import { buildConfig } from "./buildConfig";
 import { buildRepoPlans } from "./planning";
@@ -88,8 +88,10 @@ export async function createAndStartRun(options: MigrationOptions, selectedRepoP
 
   const engine = getEngine();
   engine.startRun(runId, cfg, gitlabConn.token, githubConn.token, plans).catch((err) => {
-    // eslint-disable-next-line no-console
-    console.error(`[glab2gh] run ${runId} crashed:`, err);
+    logger.error(
+      { context: "runs.engine.startRun", runId, stack: err instanceof Error ? err.stack : undefined },
+      `run ${runId} crashed: ${err instanceof Error ? err.message : String(err)}`,
+    );
   });
 
   return { runId };

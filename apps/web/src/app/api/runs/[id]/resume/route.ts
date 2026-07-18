@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import path from "node:path";
-import { discoverProjects, getExistingGithubRepoNames, createGitlabClient, createGithubClient } from "@glab2gh/core";
+import { discoverProjects, getExistingGithubRepoNames, createGitlabClient, createGithubClient, logger } from "@glab2gh/core";
 import { getDb, DATA_DIR } from "@/server/db";
 import { getGitlabConnection, getGithubConnection } from "@/server/settings";
 import { buildConfig } from "@/server/buildConfig";
@@ -43,12 +43,11 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
 
     const engine = getEngine();
     engine.resumeRun(id, cfg, gitlabConn.token, githubConn.token, plans).catch((err) => {
-      // eslint-disable-next-line no-console
-      console.error(`[glab2gh] resume of run ${id} crashed:`, err);
+      logger.error({ context: "runs.resume", runId: id, stack: err instanceof Error ? err.stack : undefined }, `run ${id} crashed while resuming: ${err instanceof Error ? err.message : String(err)}`);
     });
 
     return NextResponse.json({ ok: true });
   } catch (err) {
-    return errorResponse(err);
+    return errorResponse(err, "runs.resume");
   }
 }

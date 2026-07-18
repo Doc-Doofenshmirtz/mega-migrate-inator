@@ -17,6 +17,6 @@ export async function GET(req: Request) {
     const names = await listExistingRepoNames(octokit, owner, ownerType);
     return NextResponse.json({ names: Array.from(names) });
   } catch (err) {
-    return errorResponse(err);
+    return errorResponse(err, "github.existingRepos");
   }
 }

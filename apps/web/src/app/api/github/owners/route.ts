@@ -48,6 +48,6 @@ export async function GET() {
 
     return NextResponse.json({ owners });
   } catch (err) {
-    return errorResponse(err);
+    return errorResponse(err, "github.owners");
   }
 }

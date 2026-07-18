@@ -68,7 +68,7 @@ export async function POST(req: Request) {
       const rows = await buildPlanPreview(gitlabApi, plans, options.groupVariables);
       return NextResponse.json({ rows, blockingErrors });
     } catch (err) {
-      return errorResponse(err);
+      return errorResponse(err, "runs.plan");
     }
   }
 
@@ -82,6 +82,6 @@ export async function POST(req: Request) {
     if (err instanceof BlockingCollisionsError) {
       return NextResponse.json({ error: err.message, blockingErrors: err.blockingErrors }, { status: 400 });
     }
-    return errorResponse(err);
+    return errorResponse(err, "runs.create");
   }
 }

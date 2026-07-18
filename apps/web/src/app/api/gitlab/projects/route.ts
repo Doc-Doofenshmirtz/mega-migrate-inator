@@ -17,6 +17,6 @@ export async function GET(req: Request) {
     const result = await listProjectsPage(api, { groupId: groupId ?? undefined, search, page, includeArchived });
     return NextResponse.json(result);
   } catch (err) {
-    return errorResponse(err);
+    return errorResponse(err, "gitlab.projects");
   }
 }
