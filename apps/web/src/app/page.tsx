@@ -23,7 +23,12 @@ export default async function DashboardPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">Runs</h1>
+        <div>
+          <h1 className="text-xl font-semibold">Runs</h1>
+          <p className="text-xs mt-0.5" style={{ color: "var(--color-muted)" }}>
+            Every repository. One command. Full history.
+          </p>
+        </div>
         <Link href={configured ? "/select" : "/setup"}>
           <Button>New migration</Button>
         </Link>

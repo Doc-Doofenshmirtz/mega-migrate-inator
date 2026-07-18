@@ -6,7 +6,8 @@
   --color-muted: oklch(50% 0 0);
   --color-border: oklch(90% 0 0);
   --color-surface: oklch(100% 0 0);
-  --color-accent: oklch(55% 0.16 260);
+  --color-accent: oklch(48% 0.21 305);
+  --color-accent-2: oklch(75% 0.14 195);
   --color-accent-fg: oklch(99% 0 0);
   --color-success: oklch(60% 0.15 145);
   --color-warning: oklch(70% 0.16 80);
@@ -14,15 +15,17 @@
 
   --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --font-display: var(--font-inator), var(--font-sans);
 }
 
 :root[data-theme="dark"] {
-  --color-bg: oklch(18% 0 0);
+  --color-bg: oklch(16% 0.012 300);
   --color-fg: oklch(95% 0 0);
   --color-muted: oklch(65% 0 0);
-  --color-border: oklch(30% 0 0);
-  --color-surface: oklch(23% 0 0);
-  --color-accent: oklch(70% 0.15 260);
+  --color-border: oklch(30% 0.02 300);
+  --color-surface: oklch(21% 0.015 300);
+  --color-accent: oklch(72% 0.19 305);
+  --color-accent-2: oklch(78% 0.13 195);
   --color-accent-fg: oklch(15% 0 0);
   --color-success: oklch(70% 0.15 145);
   --color-warning: oklch(78% 0.15 80);
@@ -31,12 +34,13 @@
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --color-bg: oklch(18% 0 0);
+    --color-bg: oklch(16% 0.012 300);
     --color-fg: oklch(95% 0 0);
     --color-muted: oklch(65% 0 0);
-    --color-border: oklch(30% 0 0);
-    --color-surface: oklch(23% 0 0);
-    --color-accent: oklch(70% 0.15 260);
+    --color-border: oklch(30% 0.02 300);
+    --color-surface: oklch(21% 0.015 300);
+    --color-accent: oklch(72% 0.19 305);
+    --color-accent-2: oklch(78% 0.13 195);
     --color-accent-fg: oklch(15% 0 0);
     --color-success: oklch(70% 0.15 145);
     --color-warning: oklch(78% 0.15 80);
@@ -45,11 +49,35 @@
 }
 
 body {
-  background: var(--color-bg);
+  background:
+    radial-gradient(circle at 1px 1px, var(--color-border) 1px, transparent 0)
+      0 0 / 22px 22px,
+    var(--color-bg);
   color: var(--color-fg);
   font-family: var(--font-sans);
 }
 
 * {
   border-color: var(--color-border);
+}
+
+.font-display {
+  font-family: var(--font-display);
+}
+
+/* A little "danger stripe" for anything that wants inator-lab flair. */
+.hazard-stripe {
+  background-image: repeating-linear-gradient(
+    135deg,
+    var(--color-warning) 0px,
+    var(--color-warning) 10px,
+    var(--color-fg) 10px,
+    var(--color-fg) 20px
+  );
+  opacity: 0.9;
+}
+
+.glow-accent {
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--color-accent) 60%, transparent),
+    0 4px 16px -4px color-mix(in oklch, var(--color-accent) 55%, transparent);
 }

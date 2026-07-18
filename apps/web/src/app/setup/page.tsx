@@ -10,6 +10,23 @@ export default async function SetupPage() {
 
   return (
     <div className="space-y-6">
+      {!gitlab && !github && (
+        <div
+          className="rounded-lg border-2 border-dashed px-4 py-3"
+          style={{ borderColor: "var(--color-accent)" }}
+        >
+          <div
+            className="text-[10px] font-semibold uppercase tracking-widest mb-1"
+            style={{ color: "var(--color-accent)" }}
+          >
+            Exhibit A — the invention
+          </div>
+          <p className="text-sm italic" style={{ color: "var(--color-muted)" }}>
+            &ldquo;Behold! With just one command, every repository from GitLab
+            shall be migrated to GitHub... WITH FULL HISTORY!&rdquo;
+          </p>
+        </div>
+      )}
       <div>
         <h1 className="text-xl font-semibold">Connections</h1>
         <p className="text-sm mt-1" style={{ color: "var(--color-muted)" }}>

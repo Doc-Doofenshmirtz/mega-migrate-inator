@@ -1,18 +1,27 @@
-# glab2gh
+# glab2gh — The Mega-Migrate-inator
 
-Bulk-migrates GitLab projects (self-hosted or gitlab.com) to GitHub: mirrors
-history, LFS objects, CI/CD variables, and a best-effort mapping of branch
-protection — with verification that source and target refs match afterward.
+> *"Behold, Perry the Platypus! The Mega-Migrate-inator! With just one command,
+> every repository from GitLab shall be migrated to GitHub... WITH FULL
+> HISTORY!"*
 
-Two ways to run it:
+Yes, alright, fine — it's actually just a bulk-migration tool. But it does
+mirror history, LFS objects, CI/CD variables, and a best-effort mapping of
+branch protection from GitLab (self-hosted or gitlab.com) to GitHub, then
+verifies that source and target refs match afterward. No death rays, but
+also no repos left behind. Curse you, manual `git clone --mirror`!
 
-- **`glab2gh-web`** — a self-hosted browser UI. Connections, repo picker,
-  options, dry-run plan, live progress, and a report — no config file.
-- **`glab2gh` CLI** — the original YAML + env-var driven tool, still fully
-  supported (`packages/cli`).
+Two ways to activate it:
+
+- **`glab2gh-web`** — a self-hosted browser control panel. Connections, repo
+  picker, options, dry-run plan, live progress, and a report — no config file,
+  no lair required.
+- **`glab2gh` CLI** — the original YAML + env-var driven -inator, still fully
+  supported (`packages/cli`), for those who prefer to read the blueprints
+  before pulling the lever.
 
 This is a local operator tool, not a hosted service: run it on your own
-machine or a trusted box, not as a public multi-tenant deployment.
+machine or a trusted box, not as a public multi-tenant deployment. (Even
+evil scientists have a blast radius to think about.)
 
 ## Web UI — quickest start
 
@@ -20,8 +29,9 @@ machine or a trusted box, not as a public multi-tenant deployment.
 docker compose up
 ```
 
-Then open **http://localhost:3000**. Nothing else to configure — GitLab/GitHub
-credentials are entered in the browser on first run and encrypted at rest.
+Then open **http://localhost:3000**, and the invention shall be unveiled.
+Nothing else to configure — GitLab/GitHub credentials are entered in the
+browser on first run and encrypted at rest.
 
 Without `docker`, the equivalent is:
 
@@ -58,6 +68,8 @@ layer in the way in that case.
 
 ## CLI
 
+For anyone who trusts a YAML file more than a button:
+
 ```bash
 npm install
 npm run build --workspace=@glab2gh/core
@@ -73,18 +85,18 @@ See `glab2gh.config.yaml` for the full config shape (GitLab source scope,
 GitHub target, per-run toggles). Tokens are never read from that file —
 only from `GITLAB_TOKEN`/`GITHUB_TOKEN`.
 
-## Repo layout
+## Repo layout — the blueprints
 
 ```
 packages/core/   @glab2gh/core — pure library: discovery, planning, the
                  migration pipeline, git/GitHub/GitLab clients. Used by both
                  the CLI and the web app; has no console I/O of its own.
 packages/cli/    @glab2gh/cli — thin commander.js wrapper around core.
-apps/web/        @glab2gh/web — the Next.js UI + the in-process job engine
-                 that runs actual migrations (server/engine.ts).
+apps/web/        @glab2gh/web — the Next.js control panel + the in-process
+                 job engine that runs actual migrations (server/engine.ts).
 ```
 
-## Security
+## Security — no self-destruct button, but still careful
 
 - Tokens are entered once in the web UI, encrypted at rest (AES-256-GCM,
   key in `apps/web/data/.key`), and never sent back to the browser — every
@@ -96,7 +108,7 @@ apps/web/        @glab2gh/web — the Next.js UI + the in-process job engine
   rest protects against casual disk/backup exposure, not a determined local
   attacker with access to the running process or its environment.
 
-## Known scope limits
+## Known scope limits — even an -inator has fine print
 
 - `migrate.wiki`, `migrate.releases`, and `migrate.webhooks` exist as config
   fields (inherited from the original CLI design) but aren't implemented in
@@ -110,3 +122,5 @@ apps/web/        @glab2gh/web — the Next.js UI + the in-process job engine
   way to check this from the GitLab API alone without cloning, so the web
   UI's dry-run Plan step doesn't pre-block on it the way it does for name
   collisions.
+
+*Curse you, edge cases! But at least you're documented.*
