@@ -14,32 +14,45 @@ interface LatestTaskRow {
 }
 
 /**
- * One row per repo_path: whichever run most recently touched it, so a repo
- * migrated three runs ago still shows up even though later runs didn't
- * include it. Ties within the same run can't happen (repo_path is part of
- * that table's primary key), so ordering by run creation time is enough.
+ * One row per repo_path, latest-run-first, so within a repo's group the
+ * first "done" row (if any) is its most recent success. Success is a
+ * one-way door: once a repo has ever finished a run as done, it stays
+ * "migrated" even if someone re-selects it later and that later run fails
+ * (e.g. because the target already exists) — a botched re-run shouldn't
+ * erase a real prior migration. Repos that have never succeeded fall back
+ * to their latest run's outcome, same as before.
  */
 export function getLatestRepoStatuses(): Record<string, RepoMigrationStatus> {
   const rows = getDb()
     .prepare(
-      `SELECT repo_path, target_owner, target_name, overall_status, updated_at, run_id FROM (
-         SELECT t.repo_path, t.target_owner, t.target_name, t.overall_status, t.updated_at, t.run_id,
-                ROW_NUMBER() OVER (PARTITION BY t.repo_path ORDER BY r.created_at DESC) AS rn
-         FROM repo_tasks t
-         JOIN runs r ON r.id = t.run_id
-       ) WHERE rn = 1`,
+      `SELECT t.repo_path, t.target_owner, t.target_name, t.overall_status, t.updated_at, t.run_id
+       FROM repo_tasks t
+       JOIN runs r ON r.id = t.run_id
+       ORDER BY t.repo_path, r.created_at DESC`,
     )
     .all() as unknown as LatestTaskRow[];
 
   const statuses: Record<string, RepoMigrationStatus> = {};
-  for (const row of rows) {
+  let i = 0;
+  while (i < rows.length) {
+    const repoPath = rows[i]!.repo_path;
+    let latestRow: LatestTaskRow | null = null;
+    let doneRow: LatestTaskRow | null = null;
+    while (i < rows.length && rows[i]!.repo_path === repoPath) {
+      const row = rows[i]!;
+      if (!latestRow) latestRow = row;
+      if (!doneRow && DONE_STATUSES.has(row.overall_status)) doneRow = row;
+      i++;
+    }
+
+    const row = doneRow ?? latestRow!;
     const bucket = DONE_STATUSES.has(row.overall_status)
       ? "done"
       : ATTENTION_STATUSES.has(row.overall_status)
         ? "attention"
         : null;
-    if (!bucket) continue; // pending/in_progress — a run is (or was, mid-crash) still working on it, nothing settled to report yet
-    statuses[row.repo_path] = {
+    if (!bucket) continue; // pending/in_progress, and never done — nothing settled to report yet
+    statuses[repoPath] = {
       bucket,
       targetOwner: row.target_owner,
       targetName: row.target_name,

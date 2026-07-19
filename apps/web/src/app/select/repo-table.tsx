@@ -57,6 +57,7 @@ export function RepoTable({ group, selected, onSelectionChange, repoStatus }: Re
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+  const [selectingAll, setSelectingAll] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   // Debounce free-text search.
@@ -65,58 +66,85 @@ export function RepoTable({ group, selected, onSelectionChange, repoStatus }: Re
     return () => clearTimeout(t);
   }, [searchInput]);
 
+  function buildParams(pageNum: number): URLSearchParams {
+    const params = new URLSearchParams();
+    if (group) params.set("groupId", String(group.id));
+    if (search) params.set("search", search);
+    if (includeArchived) params.set("includeArchived", "true");
+    params.set("page", String(pageNum));
+    return params;
+  }
+
+  async function fetchProjectsPage(pageNum: number): Promise<{ projects: GitlabProject[]; totalPages: number | null }> {
+    const res = await fetch(`/api/gitlab/projects?${buildParams(pageNum)}`);
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    return { projects: data.projects, totalPages: data.totalPages };
+  }
+
   // Reset and refetch page 1 whenever the scope (group/search/archived) changes.
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    const params = new URLSearchParams();
-    if (group) params.set("groupId", String(group.id));
-    if (search) params.set("search", search);
-    if (includeArchived) params.set("includeArchived", "true");
-    params.set("page", "1");
 
-    fetch(`/api/gitlab/projects?${params}`)
-      .then((r) => r.json())
-      .then((data) => {
+    fetchProjectsPage(1)
+      .then(({ projects: fetched, totalPages: tp }) => {
         if (cancelled) return;
-        if (data.error) {
-          setError(data.error);
-          setProjects([]);
-          setTotalPages(null);
-        } else {
-          setProjects(data.projects);
-          setTotalPages(data.totalPages);
-          setPage(1);
-        }
+        setProjects(fetched);
+        setTotalPages(tp);
+        setPage(1);
       })
-      .catch((e) => !cancelled && setError(String(e)))
+      .catch((e) => !cancelled && setError(e instanceof Error ? e.message : String(e)))
       .finally(() => !cancelled && setLoading(false));
 
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [group, search, includeArchived]);
 
   async function loadMore() {
     setLoading(true);
     try {
-      const params = new URLSearchParams();
-      if (group) params.set("groupId", String(group.id));
-      if (search) params.set("search", search);
-      if (includeArchived) params.set("includeArchived", "true");
-      params.set("page", String(page + 1));
-      const res = await fetch(`/api/gitlab/projects?${params}`);
-      const data = await res.json();
-      if (data.error) {
-        setError(data.error);
-      } else {
-        setProjects((prev) => [...prev, ...data.projects]);
-        setPage(page + 1);
-        setTotalPages(data.totalPages);
-      }
+      const { projects: fetched, totalPages: tp } = await fetchProjectsPage(page + 1);
+      setProjects((prev) => [...prev, ...fetched]);
+      setPage(page + 1);
+      setTotalPages(tp);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
     } finally {
       setLoading(false);
+    }
+  }
+
+  // Fetch every remaining page for the current filter and select it all, so
+  // "select all" covers repos the user never manually paged through instead
+  // of only whatever happens to be loaded/rendered so far.
+  async function selectAllMatching() {
+    setSelectingAll(true);
+    try {
+      let currentPage = page;
+      let all = projects;
+      let tp = totalPages;
+      while (tp !== null && currentPage < tp) {
+        const { projects: fetched, totalPages: newTp } = await fetchProjectsPage(currentPage + 1);
+        all = [...all, ...fetched];
+        currentPage += 1;
+        tp = newTp;
+      }
+      setProjects(all);
+      setPage(currentPage);
+      setTotalPages(tp);
+
+      const toSelect = skipForks ? all.filter((p) => !p.forkedFromProject) : all;
+      const next = new Map(selected);
+      for (const p of toSelect) next.set(p.pathWithNamespace, p);
+      onSelectionChange(next);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSelectingAll(false);
     }
   }
 
@@ -144,6 +172,7 @@ export function RepoTable({ group, selected, onSelectionChange, repoStatus }: Re
   }
 
   const allLoadedSelected = visibleProjects.length > 0 && visibleProjects.every((p) => selected.has(p.pathWithNamespace));
+  const hasMorePages = totalPages !== null && page < totalPages;
 
   function toggleSelectAllLoaded() {
     const next = new Map(selected);
@@ -178,13 +207,37 @@ export function RepoTable({ group, selected, onSelectionChange, repoStatus }: Re
       {error && <div className="text-sm text-[var(--color-danger)] pb-2">{error}</div>}
 
       <div className="flex items-center gap-2 px-2 py-1.5 text-xs font-medium border-b" style={{ color: "var(--color-muted)" }}>
-        <Checkbox checked={allLoadedSelected} onChange={toggleSelectAllLoaded} aria-label="Select all loaded" />
+        <Checkbox
+          checked={allLoadedSelected}
+          onChange={toggleSelectAllLoaded}
+          disabled={selectingAll}
+          aria-label="Select all loaded"
+        />
         <div className="flex-1">Project</div>
         <div className="w-20 text-right">Status</div>
         <div className="w-20 text-right">Visibility</div>
         <div className="w-20 text-right">Size</div>
         <div className="w-24 text-right">Last activity</div>
       </div>
+
+      {allLoadedSelected && hasMorePages && (
+        <div className="flex items-center gap-2 px-2 py-1.5 text-xs border-b bg-[var(--color-accent)]/5">
+          {selectingAll ? (
+            <>
+              <Spinner /> Selecting all matching repos…
+            </>
+          ) : (
+            <>
+              <span style={{ color: "var(--color-muted)" }}>
+                All {visibleProjects.length} loaded repos are selected.
+              </span>
+              <button type="button" className="underline font-medium" onClick={selectAllMatching}>
+                Select all repos matching this filter
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       <div ref={parentRef} className="flex-1 overflow-auto min-h-[320px]">
         <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
@@ -232,7 +285,7 @@ export function RepoTable({ group, selected, onSelectionChange, repoStatus }: Re
 
       {totalPages !== null && page < totalPages && (
         <div className="pt-2 text-center">
-          <Button variant="outline" size="sm" onClick={loadMore} disabled={loading}>
+          <Button variant="outline" size="sm" onClick={loadMore} disabled={loading || selectingAll}>
             Load more
           </Button>
         </div>

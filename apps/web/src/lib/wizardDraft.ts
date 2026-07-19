@@ -39,3 +39,15 @@ export function getDraftOptions<T>(): T | undefined {
 export function setDraftOptions(options: Record<string, unknown>): void {
   writeDraft({ ...readDraft(), options });
 }
+
+/**
+ * Wipe the draft once a run has actually started. Without this, a
+ * completed selection (including repos that just finished migrating)
+ * lingers in sessionStorage and reappears pre-checked next time the user
+ * opens /select, since selection is otherwise deliberately persisted across
+ * the select → options → plan steps.
+ */
+export function clearDraft(): void {
+  if (typeof window === "undefined") return;
+  sessionStorage.removeItem(KEY);
+}

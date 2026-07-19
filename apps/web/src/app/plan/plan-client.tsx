@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
 import { Spinner } from "@/components/ui/spinner";
-import { getSelectedRepos, setSelectedRepos, getDraftOptions } from "@/lib/wizardDraft";
+import { getSelectedRepos, setSelectedRepos, getDraftOptions, clearDraft } from "@/lib/wizardDraft";
 import type { MigrationOptions } from "@/lib/types";
 
 interface PlanPreviewRow {
@@ -96,6 +96,7 @@ export function PlanClient() {
         setBlockingErrors(data.blockingErrors ?? []);
         return;
       }
+      clearDraft(); // run is now in flight — don't let this selection resurface next visit to /select
       router.push(`/run/${data.runId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
