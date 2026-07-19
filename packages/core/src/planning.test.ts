@@ -45,6 +45,7 @@ function baseConfig(overrides: Partial<Config["target"]> = {}): Config {
       ci_variables_as: "secrets",
       group_variables: true,
       lfs: "auto",
+      large_files: "warn",
       wiki: false,
       releases: false,
       branch_protection: true,

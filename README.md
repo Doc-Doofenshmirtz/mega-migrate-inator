@@ -117,10 +117,15 @@ apps/web/        @glab2gh/web — the Next.js control panel + the in-process
 - Per-repo overrides in the web UI cover target name and visibility, not
   individual per-repo toggle overrides (CI variables, LFS, etc. are set
   per-run, not per-repo).
-- Files over 100 MB are detected and reported as a warning once a repo is
-  actually being migrated (GitHub hard-rejects the push) — there's no cheap
-  way to check this from the GitLab API alone without cloning, so the web
-  UI's dry-run Plan step doesn't pre-block on it the way it does for name
-  collisions.
+- Files over 100 MB are only detected once a repo is actually being migrated
+  (GitHub hard-rejects the push) — there's no cheap way to check this from
+  the GitLab API alone without cloning, so the web UI's dry-run Plan step
+  doesn't pre-block on it the way it does for name collisions. By default
+  (`migrate.large_files: warn`) this just produces a warning and the push
+  will likely fail; set it to `auto_lfs` to have glab2gh rewrite the local
+  mirror clone — converting oversized blobs to Git LFS pointers across all
+  refs — before pushing, so the push succeeds. That rewrite only touches the
+  local clone that gets pushed to GitHub; the GitLab source history is never
+  modified. Requires `git-lfs` on `PATH`; falls back to warn-only otherwise.
 
 *Curse you, edge cases! But at least you're documented.*

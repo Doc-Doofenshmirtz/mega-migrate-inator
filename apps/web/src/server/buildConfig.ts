@@ -33,6 +33,7 @@ export function buildConfig(
       ci_variables_as: options.ciVariablesAs,
       group_variables: options.groupVariables,
       lfs: options.lfs,
+      large_files: options.largeFiles,
       wiki: false,
       releases: false,
       branch_protection: options.branchProtection,

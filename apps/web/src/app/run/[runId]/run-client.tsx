@@ -36,6 +36,7 @@ const STEP_LABEL: Record<string, string> = {
   create_target: "create",
   mirror_clone: "clone",
   prune_refs: "prune",
+  large_file_lfs_migrate: "large files",
   lfs_fetch: "lfs fetch",
   mirror_push: "push",
   lfs_push: "lfs push",

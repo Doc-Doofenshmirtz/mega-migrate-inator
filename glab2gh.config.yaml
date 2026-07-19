@@ -35,6 +35,9 @@ migrate:
   ci_variables_as: secrets       # secrets | variables | auto
   group_variables: true
   lfs: auto                      # auto | on | off
+  large_files: warn              # warn | auto_lfs (auto_lfs rewrites the local mirror clone only,
+                                  # converting blobs over 100 MB to Git LFS pointers before pushing
+                                  # to GitHub; the GitLab source repo is never touched)
   wiki: false
   releases: false
   branch_protection: true

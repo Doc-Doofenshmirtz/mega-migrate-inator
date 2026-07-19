@@ -48,3 +48,18 @@ export async function lfsFetchAll(dir: string, remoteUrl: string, insecureTls: b
 export async function lfsPushAll(dir: string, remoteUrl: string): Promise<void> {
   await run("git", ["lfs", "push", remoteUrl, "--all"], { cwd: dir, label: "git lfs push --all (target)" });
 }
+
+/**
+ * Rewrites the given paths to Git LFS pointers across every ref (the clone is
+ * a `--mirror`, so branches live at refs/heads/* directly — `--everything` is
+ * what reaches all of them, not just HEAD). Runs against the local mirror
+ * only; the GitLab source is never touched.
+ */
+export async function migrateLargeFilesToLfs(dir: string, paths: string[]): Promise<void> {
+  if (paths.length === 0) return;
+  await run(
+    "git",
+    ["lfs", "migrate", "import", "--everything", "--skip-fetch", `--include=${paths.join(",")}`],
+    { cwd: dir, label: "git lfs migrate import (large files -> LFS)" },
+  );
+}

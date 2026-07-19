@@ -332,6 +332,26 @@ export function OptionsClient() {
                 auto: migrate LFS objects only for repos that use them
               </p>
             </div>
+            <div>
+              <Label>Files over 100 MB</Label>
+              <div className="flex gap-4 text-sm">
+                {(["warn", "auto_lfs"] as const).map((l) => (
+                  <label key={l} className="flex items-center gap-1.5">
+                    <input
+                      type="radio"
+                      name="largeFiles"
+                      checked={options.largeFiles === l}
+                      onChange={() => setOptions((prev) => ({ ...prev, largeFiles: l }))}
+                    />
+                    {l === "auto_lfs" ? "auto-convert to LFS" : "warn only"}
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs mt-1" style={{ color: "var(--color-muted)" }}>
+                GitHub hard-rejects files over 100 MB. auto-convert to LFS rewrites just the local mirror copy
+                (the GitLab source is never touched) before pushing to GitHub, so the push doesn&apos;t fail.
+              </p>
+            </div>
             <label className="flex items-center justify-between">
               <span className="text-sm">Apply branch protection (best-effort mapping from GitLab)</span>
               <Switch checked={options.branchProtection} onCheckedChange={(v) => setOptions((prev) => ({ ...prev, branchProtection: v }))} />

@@ -26,6 +26,7 @@ export interface MigrationOptions {
   ciVariablesAs: "secrets" | "variables" | "auto";
   groupVariables: boolean;
   lfs: "auto" | "on" | "off";
+  largeFiles: "warn" | "auto_lfs";
   branchProtection: boolean;
   archiveSource: boolean;
   setGitlabDescription: string;
@@ -44,6 +45,7 @@ export const DEFAULT_MIGRATION_OPTIONS: MigrationOptions = {
   ciVariablesAs: "secrets",
   groupVariables: true,
   lfs: "auto",
+  largeFiles: "warn",
   branchProtection: true,
   archiveSource: false,
   setGitlabDescription: "",

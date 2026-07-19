@@ -33,6 +33,7 @@ const MigrateConfigSchema = z.object({
   ci_variables_as: z.enum(["secrets", "variables", "auto"]).default("secrets"),
   group_variables: z.boolean().default(true),
   lfs: z.enum(["auto", "on", "off"]).default("auto"),
+  large_files: z.enum(["warn", "auto_lfs"]).default("warn"),
   wiki: z.boolean().default(false),
   releases: z.boolean().default(false),
   branch_protection: z.boolean().default(true),

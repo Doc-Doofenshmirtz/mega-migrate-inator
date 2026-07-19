@@ -26,6 +26,7 @@ export const OptionsSchema = z.object({
   ciVariablesAs: z.enum(["secrets", "variables", "auto"]),
   groupVariables: z.boolean(),
   lfs: z.enum(["auto", "on", "off"]),
+  largeFiles: z.enum(["warn", "auto_lfs"]),
   branchProtection: z.boolean(),
   archiveSource: z.boolean(),
   setGitlabDescription: z.string(),

@@ -27,7 +27,7 @@ import {
   scanCommittedSensitiveFiles,
   SIZE_THRESHOLDS,
 } from "./git/mirror.js";
-import { detectLfs, lfsFetchAll, lfsPushAll, isGitLfsInstalled } from "./git/lfs.js";
+import { detectLfs, lfsFetchAll, lfsPushAll, isGitLfsInstalled, migrateLargeFilesToLfs } from "./git/lfs.js";
 
 export class CancelledError extends Error {
   constructor(repo: string) {
@@ -179,13 +179,34 @@ export async function migrateRepo(ctx: RunContext, plan: RepoPlan): Promise<Repo
     const largeFiles = ctx.deepSizeCheck
       ? await checkFullHistoryLargeFiles(workdir)
       : await checkHeadLargeFiles(workdir);
-    if (largeFiles.length > 0) {
+    let forcedLfs = false;
+    if (largeFiles.length === 0) {
+      state.finishStep(sourcePath, "large_file_lfs_migrate", "skipped");
+    } else {
       const list = largeFiles.slice(0, 10).map((f) => `${f.path} (${(f.sizeBytes / 1e6).toFixed(1)} MB)`).join(", ");
-      const msg =
-        `file(s) over 100 MB detected: ${list}. GitHub hard-rejects files over 100 MB — push will likely fail. ` +
-        `Consider 'git lfs migrate import' on the source before retrying.`;
-      result.warnings.push(msg);
-      state.addWarning(sourcePath, msg);
+      const canAutoMigrate = cfg.migrate.large_files === "auto_lfs" && (await isGitLfsInstalled());
+      if (canAutoMigrate) {
+        if (!state.isStepDone(sourcePath, "large_file_lfs_migrate", ctx.force)) {
+          await step("large_file_lfs_migrate", () =>
+            migrateLargeFilesToLfs(workdir, largeFiles.map((f) => f.path)),
+          );
+        }
+        forcedLfs = true;
+        const msg = `file(s) over 100 MB auto-converted to Git LFS before push: ${list}.`;
+        result.warnings.push(msg);
+        state.addWarning(sourcePath, msg);
+      } else {
+        state.finishStep(sourcePath, "large_file_lfs_migrate", "skipped");
+        const lfsNote =
+          cfg.migrate.large_files === "auto_lfs"
+            ? "auto-conversion requested but git-lfs is not installed on PATH; "
+            : "";
+        const msg =
+          `file(s) over 100 MB detected: ${list}. GitHub hard-rejects files over 100 MB — push will likely fail. ` +
+          `${lfsNote}Consider 'git lfs migrate import' on the source before retrying.`;
+        result.warnings.push(msg);
+        state.addWarning(sourcePath, msg);
+      }
     }
 
     const sensitiveFiles = await scanCommittedSensitiveFiles(workdir);
@@ -205,7 +226,7 @@ export async function migrateRepo(ctx: RunContext, plan: RepoPlan): Promise<Repo
 
     // 5. lfs_fetch
     const lfsDetected = cfg.migrate.lfs === "off" ? false : await detectLfs(workdir);
-    const doLfs = cfg.migrate.lfs === "on" || (cfg.migrate.lfs === "auto" && lfsDetected);
+    const doLfs = forcedLfs || cfg.migrate.lfs === "on" || (cfg.migrate.lfs === "auto" && lfsDetected);
     result.lfs = doLfs;
     if (doLfs) {
       if (!(await isGitLfsInstalled())) {

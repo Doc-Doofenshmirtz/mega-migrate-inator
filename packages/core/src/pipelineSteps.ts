@@ -7,6 +7,7 @@ export const PIPELINE_STEPS = [
   "create_target",
   "mirror_clone",
   "prune_refs",
+  "large_file_lfs_migrate",
   "lfs_fetch",
   "mirror_push",
   "lfs_push",
