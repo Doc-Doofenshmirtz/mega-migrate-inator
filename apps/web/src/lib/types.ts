@@ -37,7 +37,7 @@ export interface MigrationOptions {
 export const DEFAULT_MIGRATION_OPTIONS: MigrationOptions = {
   targetOwner: "",
   visibility: "private",
-  nameTemplate: "{group_path}-{name}",
+  nameTemplate: "{name}",
   topicsFromGitlabTopics: true,
   collision: "fail",
   ciVariables: true,
