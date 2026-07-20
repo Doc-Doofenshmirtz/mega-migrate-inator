@@ -24,10 +24,14 @@ export function resolveVisibility(
 
 export async function listExistingRepoNames(octokit: Octokit, owner: string, ownerType: "User" | "Organization"): Promise<Set<string>> {
   const names = new Set<string>();
+  // A "User" owner is always the token's own account here — createRepo's User branch
+  // can only ever create under the authenticated user, never someone else's login — so
+  // `listForUser` (public-repos-only, even for your own account) would silently miss
+  // private repos. `listForAuthenticatedUser` sees them.
   const iterator =
     ownerType === "Organization"
       ? octokit.paginate.iterator(octokit.rest.repos.listForOrg, { org: owner, per_page: 100 })
-      : octokit.paginate.iterator(octokit.rest.repos.listForUser, { username: owner, per_page: 100 });
+      : octokit.paginate.iterator(octokit.rest.repos.listForAuthenticatedUser, { affiliation: "owner", per_page: 100 });
 
   for await (const { data } of iterator) {
     for (const repo of data as Array<{ name: string }>) {

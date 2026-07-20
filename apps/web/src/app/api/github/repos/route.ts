@@ -48,12 +48,29 @@ export async function GET(req: Request) {
     const octokit = githubApiFromSettings();
     const ownerType = await detectOwnerType(octokit, owner);
     const perPage = 50;
-    const { data } =
-      ownerType === "Organization"
-        ? await octokit.rest.repos.listForOrg({ org: owner, per_page: perPage, page, sort: "full_name" })
-        : await octokit.rest.repos.listForUser({ username: owner, per_page: perPage, page, sort: "full_name" });
 
-    const repos = (data as RawRepo[]).map(mapRepo);
+    let data: RawRepo[];
+    if (ownerType === "Organization") {
+      data = (await octokit.rest.repos.listForOrg({ org: owner, per_page: perPage, page, sort: "full_name" })).data as RawRepo[];
+    } else {
+      const { data: me } = await octokit.rest.users.getAuthenticated();
+      // `GET /users/{username}/repos` only ever returns public repos, even when the
+      // username is the token's own account — listing the token owner's private repos
+      // requires the authenticated-user endpoint instead.
+      data =
+        me.login.toLowerCase() === owner.toLowerCase()
+          ? (
+              await octokit.rest.repos.listForAuthenticatedUser({
+                per_page: perPage,
+                page,
+                sort: "full_name",
+                affiliation: "owner",
+              })
+            ).data
+          : (await octokit.rest.repos.listForUser({ username: owner, per_page: perPage, page, sort: "full_name" })).data as RawRepo[];
+    }
+
+    const repos = data.map(mapRepo);
     return NextResponse.json({ repos, hasMore: data.length === perPage });
   } catch (err) {
     return errorResponse(err, "github.repos");

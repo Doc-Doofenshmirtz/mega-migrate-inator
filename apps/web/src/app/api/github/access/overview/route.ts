@@ -22,10 +22,19 @@ export async function GET(req: Request) {
   try {
     const octokit = githubApiFromSettings();
     const ownerType = await detectOwnerType(octokit, owner);
-    const iterator =
-      ownerType === "Organization"
-        ? octokit.paginate.iterator(octokit.rest.repos.listForOrg, { org: owner, per_page: 100 })
-        : octokit.paginate.iterator(octokit.rest.repos.listForUser, { username: owner, per_page: 100 });
+
+    let iterator: AsyncIterable<{ data: unknown }>;
+    if (ownerType === "Organization") {
+      iterator = octokit.paginate.iterator(octokit.rest.repos.listForOrg, { org: owner, per_page: 100 });
+    } else {
+      const { data: me } = await octokit.rest.users.getAuthenticated();
+      // `listForUser` only ever returns public repos, even for the token's own account —
+      // use the authenticated-user endpoint when the owner being browsed is the token itself.
+      iterator =
+        me.login.toLowerCase() === owner.toLowerCase()
+          ? octokit.paginate.iterator(octokit.rest.repos.listForAuthenticatedUser, { affiliation: "owner", per_page: 100 })
+          : octokit.paginate.iterator(octokit.rest.repos.listForUser, { username: owner, per_page: 100 });
+    }
 
     const repoNames: string[] = [];
     for await (const { data } of iterator) {
