@@ -57,6 +57,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 <Link href="/" className="hover:underline">
                   Runs
                 </Link>
+                <Link href="/access" className="hover:underline">
+                  Access
+                </Link>
                 <Link href="/setup" className="hover:underline">
                   Connections
                 </Link>

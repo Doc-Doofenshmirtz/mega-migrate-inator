@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs grep -l \"PUT /repos/{owner}/{repo}/collaborators/{username}\")",
+      "Bash(node -e ' *)",
+      "Bash(mkdir -p \"d:/milo/migration/apps/web/src/app/api/access/jobs/[id]/events\" \"d:/milo/migration/apps/web/src/app/api/access/jobs/[id]/retry\")",
+      "Bash(mkdir -p \"d:/milo/migration/apps/web/src/app/access/github/manage\" \"d:/milo/migration/apps/web/src/app/access/github/jobs/[jobId]\")",
+      "Bash(mkdir -p \"d:/milo/migration/apps/web/src/app/access/gitlab/manage\" \"d:/milo/migration/apps/web/src/app/access/gitlab/jobs/[jobId]\")",
+      "Skill(dataviz)",
+      "Skill(dataviz:*)",
+      "Bash(curl -s -D - -o /dev/null http://localhost:3000/access)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\\\\n\" http://localhost:3000/login)",
+      "Bash(curl -s -D - -o /dev/null http://localhost:3000/)",
+      "Bash(curl -s -D - -o /dev/null http://localhost:3000/setup)",
+      "Bash(tasklist)",
+      "Bash(wmic process *)",
+      "PowerShell(Get-CimInstance Win32_Process -Filter \"ProcessId=50108\")"
+    ],
+    "additionalDirectories": [
+      "d:\\milo\\migration\\apps\\web\\src\\app\\api\\access\\jobs\\[id]",
+      "d:\\milo\\migration\\apps\\web\\src\\app\\access\\github\\jobs",
+      "d:\\milo\\migration\\apps\\web\\src\\app\\access\\gitlab\\jobs"
+    ]
+  }
+}

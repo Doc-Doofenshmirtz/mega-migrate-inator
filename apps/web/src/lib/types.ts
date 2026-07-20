@@ -35,6 +35,47 @@ export interface MigrationOptions {
   overrides: Record<string, RepoOverride>;
 }
 
+export interface GithubRepoRef {
+  id: number;
+  name: string;
+  fullName: string;
+  private: boolean;
+  archived: boolean;
+  fork: boolean;
+  description: string | null;
+  updatedAt: string | null;
+}
+
+export type GithubPermission = "pull" | "triage" | "push" | "maintain" | "admin";
+
+export interface GithubCollaborator {
+  login: string;
+  avatarUrl: string;
+  permission: string;
+  pending: boolean;
+}
+
+export interface GitlabAccessLevelOption {
+  value: number;
+  label: string;
+}
+
+export const GITLAB_ACCESS_LEVELS: GitlabAccessLevelOption[] = [
+  { value: 10, label: "Guest" },
+  { value: 20, label: "Reporter" },
+  { value: 30, label: "Developer" },
+  { value: 40, label: "Maintainer" },
+  { value: 50, label: "Owner" },
+];
+
+export interface GitlabMemberRef {
+  id: number;
+  username: string;
+  name: string;
+  avatarUrl: string;
+  accessLevel: number;
+}
+
 export const DEFAULT_MIGRATION_OPTIONS: MigrationOptions = {
   targetOwner: "",
   visibility: "private",
