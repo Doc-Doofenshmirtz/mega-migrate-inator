@@ -82,16 +82,36 @@ export function RepoDetailDialog({ owner, repo, onClose, onDeleted }: RepoDetail
               <Spinner /> Loading branches…
             </div>
           ) : (
-            <div className="max-w-xs">
-              <Label>Branch</Label>
-              <Select value={branch} onChange={(e) => setBranch(e.target.value)}>
-                {branches.map((b) => (
-                  <option key={b.name} value={b.name}>
-                    {b.name}
-                    {b.protected ? " 🔒" : ""}
-                  </option>
-                ))}
-              </Select>
+            <div className="flex flex-wrap items-end gap-3">
+              <div className="max-w-xs">
+                <Label>Branch</Label>
+                <Select value={branch} onChange={(e) => setBranch(e.target.value)}>
+                  {branches.map((b) => (
+                    <option key={b.name} value={b.name}>
+                      {b.name}
+                      {b.protected ? " 🔒" : ""}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+              <div className="flex gap-2 pb-0.5">
+                <a
+                  href={`/api/github/repos/archive?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo.name)}&ref=${encodeURIComponent(branch)}&format=zip`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center gap-2 font-medium transition-colors text-sm px-2.5 py-1.5 rounded-md bg-transparent border text-[var(--color-fg)] hover:bg-black/5 dark:hover:bg-white/5"
+                >
+                  Download .zip
+                </a>
+                <a
+                  href={`/api/github/repos/archive?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo.name)}&ref=${encodeURIComponent(branch)}&format=tar.gz`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center justify-center gap-2 font-medium transition-colors text-sm px-2.5 py-1.5 rounded-md bg-transparent border text-[var(--color-fg)] hover:bg-black/5 dark:hover:bg-white/5"
+                >
+                  Download .tar.gz
+                </a>
+              </div>
             </div>
           )}
 

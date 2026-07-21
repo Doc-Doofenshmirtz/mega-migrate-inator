@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/cn";
+import { fuzzyFilter } from "@/lib/fuzzyMatch";
 import type { GithubRepoRef } from "@/lib/types";
 import { RepoDetailDialog } from "./repo-detail-dialog";
 
@@ -24,6 +25,7 @@ interface RepoTableProps {
  * already loaded rather than re-querying the server.
  */
 export function RepoTable({ owner, selected, onSelectionChange }: RepoTableProps) {
+  const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [repos, setRepos] = useState<GithubRepoRef[]>([]);
   const [page, setPage] = useState(1);
@@ -40,11 +42,18 @@ export function RepoTable({ owner, selected, onSelectionChange }: RepoTableProps
     return { repos: data.repos, hasMore: data.hasMore };
   }
 
+  // Debounce free-text search so fuzzy scoring doesn't recompute on every keystroke.
+  useEffect(() => {
+    const t = setTimeout(() => setSearch(searchInput), 150);
+    return () => clearTimeout(t);
+  }, [searchInput]);
+
   useEffect(() => {
     if (!owner) return;
     let cancelled = false;
     setLoading(true);
     setError(null);
+    setSearchInput("");
     setSearch("");
 
     fetchPage(1)
@@ -104,11 +113,11 @@ export function RepoTable({ owner, selected, onSelectionChange }: RepoTableProps
     }
   }
 
-  const visibleRepos = useMemo(() => {
-    if (!search) return repos;
-    const q = search.toLowerCase();
-    return repos.filter((r) => r.name.toLowerCase().includes(q));
-  }, [repos, search]);
+  // Fuzzy subsequence match (like fzf/VS Code quick-open) so typos and partial,
+  // non-contiguous input ("rtbl" -> "repo-table") still find the right repo,
+  // ranked by match quality instead of just preserving load order.
+  const matched = useMemo(() => fuzzyFilter(repos, search, (r) => r.name), [repos, search]);
+  const visibleRepos = useMemo(() => matched.map((m) => m.item), [matched]);
 
   const parentRef = useRef<HTMLDivElement>(null);
   const virtualizer = useVirtualizer({
@@ -143,7 +152,7 @@ export function RepoTable({ owner, selected, onSelectionChange }: RepoTableProps
   return (
     <div className="flex flex-col h-full">
       <div className="flex flex-wrap items-center gap-3 pb-3">
-        <Input placeholder="Filter loaded repos…" value={search} onChange={(e) => setSearch(e.target.value)} className="max-w-xs" />
+        <Input placeholder="Search loaded repos…" value={searchInput} onChange={(e) => setSearchInput(e.target.value)} className="max-w-xs" />
         {loading && <Spinner />}
       </div>
 
@@ -181,7 +190,7 @@ export function RepoTable({ owner, selected, onSelectionChange }: RepoTableProps
       <div ref={parentRef} className="flex-1 overflow-auto min-h-[320px]">
         <div style={{ height: virtualizer.getTotalSize(), position: "relative" }}>
           {virtualizer.getVirtualItems().map((row) => {
-            const r = visibleRepos[row.index]!;
+            const { item: r, indices } = matched[row.index]!;
             const isSelected = selected.has(r.fullName);
             return (
               <div
@@ -192,7 +201,9 @@ export function RepoTable({ owner, selected, onSelectionChange }: RepoTableProps
               >
                 <Checkbox checked={isSelected} onChange={() => toggle(r)} onClick={(e) => e.stopPropagation()} />
                 <div className="flex-1 min-w-0">
-                  <div className="truncate">{r.name}</div>
+                  <div className="truncate">
+                    <HighlightedText text={r.name} indices={indices} />
+                  </div>
                 </div>
                 <div className="w-20 text-right">
                   <Badge tone={r.private ? "neutral" : "accent"}>{r.private ? "private" : "public"}</Badge>
@@ -250,5 +261,23 @@ export function RepoTable({ owner, selected, onSelectionChange }: RepoTableProps
         />
       )}
     </div>
+  );
+}
+
+function HighlightedText({ text, indices }: { text: string; indices: number[] }) {
+  if (indices.length === 0) return <>{text}</>;
+  const matchedAt = new Set(indices);
+  return (
+    <>
+      {text.split("").map((ch, i) =>
+        matchedAt.has(i) ? (
+          <span key={i} style={{ color: "var(--color-accent)", fontWeight: 600 }}>
+            {ch}
+          </span>
+        ) : (
+          <span key={i}>{ch}</span>
+        ),
+      )}
+    </>
   );
 }
