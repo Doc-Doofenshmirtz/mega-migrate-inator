@@ -36,6 +36,10 @@ const PERMISSIONS: { value: GithubPermission; label: string }[] = [
   { value: "admin", label: "Admin — full control" },
 ];
 
+// GitHub only accepts these two fine-grained roles on organization-owned repos —
+// sending either one for a personal-account repo fails with a validation error.
+const ORG_ONLY_PERMISSIONS = new Set<GithubPermission>(["triage", "maintain"]);
+
 export function ManageClient() {
   const router = useRouter();
   const [step, setStep] = useState<Step>("repos");
@@ -73,6 +77,17 @@ export function ManageClient() {
   useEffect(() => {
     setSelectedRepos(new Map());
   }, [owner]);
+
+  const selectedOwnerType = owners?.find((o) => o.login === owner)?.type ?? null;
+  const availablePermissions =
+    selectedOwnerType === "user" ? PERMISSIONS.filter((p) => !ORG_ONLY_PERMISSIONS.has(p.value)) : PERMISSIONS;
+
+  useEffect(() => {
+    if (selectedOwnerType === "user" && ORG_ONLY_PERMISSIONS.has(permission)) {
+      setPermission("push");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedOwnerType]);
 
   // Validate exact usernames against GitHub as they're added, so a typo doesn't become a wasted task later.
   useEffect(() => {
@@ -252,12 +267,18 @@ export function ManageClient() {
               <div className="max-w-sm">
                 <Label>Permission level</Label>
                 <Select value={permission} onChange={(e) => setPermission(e.target.value as GithubPermission)}>
-                  {PERMISSIONS.map((p) => (
+                  {availablePermissions.map((p) => (
                     <option key={p.value} value={p.value}>
                       {p.label}
                     </option>
                   ))}
                 </Select>
+                {selectedOwnerType === "user" && (
+                  <p className="text-xs mt-1" style={{ color: "var(--color-muted)" }}>
+                    Triage and Maintain aren&apos;t available — {owner} is a personal account, and GitHub only
+                    supports those roles on organization-owned repositories.
+                  </p>
+                )}
               </div>
             )}
           </CardContent>

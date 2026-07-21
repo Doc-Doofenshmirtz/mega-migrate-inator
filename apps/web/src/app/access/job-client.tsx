@@ -155,7 +155,14 @@ export function JobClient({ jobId, backHref, title }: { jobId: string; backHref:
                 <div className="truncate">
                   {t.repoLabel} <span style={{ color: "var(--color-muted)" }}>→</span> {t.memberLabel}
                 </div>
-                {t.error && <div className="text-xs text-[var(--color-danger)] truncate">{t.error}</div>}
+                {t.error && (
+                  <div
+                    className="text-xs text-[var(--color-danger)] mt-0.5 break-words whitespace-pre-wrap rounded px-1.5 py-1"
+                    style={{ background: "color-mix(in srgb, var(--color-danger) 8%, transparent)" }}
+                  >
+                    {t.error}
+                  </div>
+                )}
                 {t.status === "invited" && (t.result?.invitationUrl ? (
                   <a href={t.result.invitationUrl} target="_blank" rel="noreferrer" className="text-xs underline" style={{ color: "var(--color-muted)" }}>
                     pending invitation — not yet accepted

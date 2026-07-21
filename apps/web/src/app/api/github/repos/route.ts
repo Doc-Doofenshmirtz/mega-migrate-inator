@@ -76,3 +76,29 @@ export async function GET(req: Request) {
     return errorResponse(err, "github.repos");
   }
 }
+
+/**
+ * Permanently deletes a GitHub repository. `confirm` must exactly match `repo` —
+ * the client-side UI already gates the delete button on the same typed-name match,
+ * this is the server-side backstop against a bypass or a future direct caller.
+ */
+export async function DELETE(req: Request) {
+  const params = new URL(req.url).searchParams;
+  const owner = params.get("owner");
+  const repo = params.get("repo");
+  const confirm = params.get("confirm");
+  if (!owner || !repo) {
+    return NextResponse.json({ error: "owner and repo query params are required" }, { status: 400 });
+  }
+  if (confirm !== repo) {
+    return NextResponse.json({ error: "Confirmation text must exactly match the repository name." }, { status: 400 });
+  }
+
+  try {
+    const octokit = githubApiFromSettings();
+    await octokit.rest.repos.delete({ owner, repo });
+    return NextResponse.json({ deleted: true });
+  } catch (err) {
+    return errorResponse(err, "github.repos.delete");
+  }
+}

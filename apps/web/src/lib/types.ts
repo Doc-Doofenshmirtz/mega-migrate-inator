@@ -55,6 +55,35 @@ export interface GithubCollaborator {
   pending: boolean;
 }
 
+export interface GithubBranchRef {
+  name: string;
+  protected: boolean;
+}
+
+export interface GithubTreeEntry {
+  name: string;
+  path: string;
+  type: "file" | "dir" | "symlink" | "submodule";
+  size: number;
+  sha: string;
+}
+
+export interface GithubFileContent {
+  path: string;
+  name: string;
+  size: number;
+  sha: string;
+  binary: boolean;
+  truncated: boolean;
+  content: string | null;
+  htmlUrl: string | null;
+  downloadUrl: string | null;
+}
+
+export type GithubContentsResponse =
+  | { type: "dir"; path: string; entries: GithubTreeEntry[] }
+  | { type: "file"; file: GithubFileContent };
+
 export interface GitlabAccessLevelOption {
   value: number;
   label: string;

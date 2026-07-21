@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/cn";
 import type { GithubRepoRef } from "@/lib/types";
+import { RepoDetailDialog } from "./repo-detail-dialog";
 
 interface RepoTableProps {
   owner: string;
@@ -30,6 +31,7 @@ export function RepoTable({ owner, selected, onSelectionChange }: RepoTableProps
   const [loading, setLoading] = useState(false);
   const [selectingAll, setSelectingAll] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [detailRepo, setDetailRepo] = useState<GithubRepoRef | null>(null);
 
   async function fetchPage(pageNum: number): Promise<{ repos: GithubRepoRef[]; hasMore: boolean }> {
     const res = await fetch(`/api/github/repos?owner=${encodeURIComponent(owner)}&page=${pageNum}`);
@@ -156,6 +158,7 @@ export function RepoTable({ owner, selected, onSelectionChange }: RepoTableProps
         <Checkbox checked={allLoadedSelected} onChange={toggleSelectAllLoaded} disabled={selectingAll} aria-label="Select all loaded" />
         <div className="flex-1">Repository</div>
         <div className="w-20 text-right">Visibility</div>
+        <div className="w-[62px] text-right">&nbsp;</div>
       </div>
 
       {allLoadedSelected && hasMore && (
@@ -199,6 +202,18 @@ export function RepoTable({ owner, selected, onSelectionChange }: RepoTableProps
                     </Badge>
                   )}
                 </div>
+                <div className="w-[62px] text-right shrink-0">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDetailRepo(r);
+                    }}
+                  >
+                    Browse
+                  </Button>
+                </div>
               </div>
             );
           })}
@@ -216,6 +231,23 @@ export function RepoTable({ owner, selected, onSelectionChange }: RepoTableProps
             Load more
           </Button>
         </div>
+      )}
+
+      {detailRepo && (
+        <RepoDetailDialog
+          owner={owner}
+          repo={detailRepo}
+          onClose={() => setDetailRepo(null)}
+          onDeleted={(fullName) => {
+            setRepos((prev) => prev.filter((x) => x.fullName !== fullName));
+            if (selected.has(fullName)) {
+              const next = new Map(selected);
+              next.delete(fullName);
+              onSelectionChange(next);
+            }
+            setDetailRepo(null);
+          }}
+        />
       )}
     </div>
   );

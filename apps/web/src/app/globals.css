@@ -81,3 +81,7 @@ body {
   box-shadow: 0 0 0 1px color-mix(in oklch, var(--color-accent) 60%, transparent),
     0 4px 16px -4px color-mix(in oklch, var(--color-accent) 55%, transparent);
 }
+
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.5);
+}
