@@ -182,7 +182,7 @@ export function RunClient({ runId }: { runId: string }) {
                   ))}
                 </ul>
               )}
-              <LogTail lines={logs.filter((l) => l.repoPath === task.repoPath)} />
+              <LogTail lines={logs.filter((l) => l.repoPath === task.repoPath || (l.repoPath === null && merged.length === 1))} />
             </CardContent>
           </Card>
         ))}

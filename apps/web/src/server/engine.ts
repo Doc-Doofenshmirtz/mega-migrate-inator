@@ -97,7 +97,10 @@ class JobEngine {
     };
 
     const result = await runWithEmitter(
-      (evt) => publishLog(runId, evt.repo, evt.level, evt.line),
+      // evt.repo is only set for logger.child({repo}) messages; raw command output from
+      // exec.ts's run() has no repo context of its own, but this callback is already
+      // scoped to a single repo for its whole lifetime, so fall back to that.
+      (evt) => publishLog(runId, evt.repo ?? plan.sourcePath, evt.level, evt.line),
       () => migrateRepo(ctx, plan),
     );
 
