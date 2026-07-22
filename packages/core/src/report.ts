@@ -71,6 +71,19 @@ export function renderReport(results: RepoMigrationResult[], runStartedAt: strin
       }
     }
 
+    if (r.syncSummary) {
+      const s = r.syncSummary;
+      lines.push(`- Synced with existing target:`);
+      lines.push(`  - New branches/tags: ${s.newRefs.join(", ") || "(none)"}`);
+      lines.push(`  - Fast-forwarded (GitHub was behind, no data lost): ${s.fastForwardedRefs.join(", ") || "(none)"}`);
+      if (s.divergedRefs.length > 0) {
+        lines.push(`  - DIVERGED — GitHub-only commits discarded and overwritten: ${s.divergedRefs.join(", ")}`);
+      }
+      if (s.deletedOnTarget.length > 0) {
+        lines.push(`  - DELETED on GitHub (existed only there, not in GitLab): ${s.deletedOnTarget.join(", ")}`);
+      }
+    }
+
     if (r.verifyDiff) {
       lines.push(`- Verification FAILED:`);
       lines.push(`  - Missing on target: ${r.verifyDiff.missingOnTarget.join(", ") || "(none)"}`);

@@ -25,7 +25,7 @@ const TargetConfigSchema = z.object({
   visibility: z.enum(["private", "public", "inherit"]).default("private"),
   name_template: z.string().default("{group_path}-{name}"),
   topics_from_gitlab_topics: z.boolean().default(true),
-  collision: z.enum(["fail", "skip", "suffix"]).default("fail"),
+  collision: z.enum(["fail", "skip", "suffix", "sync"]).default("fail"),
 });
 
 const MigrateConfigSchema = z.object({

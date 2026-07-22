@@ -28,7 +28,17 @@ target:
   visibility: private            # private | public | inherit
   name_template: "{group_path}-{name}"   # tokens: {name} {group_path} {namespace}
   topics_from_gitlab_topics: true
-  collision: fail                # fail | skip | suffix
+  collision: fail                 # fail | skip | suffix | sync
+                                  # sync: for a repo whose target name already existed on GitHub
+                                  # *before* this run (not just claimed earlier in it), update it
+                                  # in place instead of skipping/renaming — pushes GitLab's refs,
+                                  # CI variables, and branch protection onto the existing repo.
+                                  # Branches GitHub is behind on fast-forward; branches that
+                                  # diverged (GitHub has commits GitLab doesn't) are overwritten
+                                  # with GitLab's version; refs that exist only on GitHub are
+                                  # deleted (git push --mirror semantics). Two GitLab projects
+                                  # colliding with each other in the same run still fall back to
+                                  # suffix, since there's no existing target to sync against.
 
 migrate:
   ci_variables: true

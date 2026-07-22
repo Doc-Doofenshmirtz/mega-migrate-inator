@@ -34,19 +34,26 @@ export function buildRepoPlans(projects: GitlabProject[], options: MigrationOpti
     let targetName = baseName;
     let skip = false;
     let skipReason: string | undefined;
+    let syncTarget = false;
     const collidesBase = isCaseInsensitiveCollision(baseName, claimed);
 
     if (collidesBase && !manuallyNamed) {
-      if (options.collision === "skip") {
+      // "sync" only makes sense against a repo that pre-dated this run — colliding with
+      // another selected repo claimed earlier in *this* loop has no existing target to
+      // sync against, so that case still falls through to suffix.
+      const preExisting = isCaseInsensitiveCollision(baseName, existingNames);
+      if (options.collision === "sync" && preExisting) {
+        syncTarget = true;
+      } else if (options.collision === "skip") {
         skip = true;
         skipReason = `target name '${baseName}' collides with an existing repo or another selected repo`;
-      } else if (options.collision === "suffix") {
+      } else if (options.collision === "suffix" || options.collision === "sync") {
         targetName = suffixedName(baseName, claimed);
       }
       // "fail": leave targetName === baseName; the still-colliding check below reports it.
     }
 
-    const finalCollides = !skip && claimed.has(targetName.toLowerCase());
+    const finalCollides = !skip && !syncTarget && claimed.has(targetName.toLowerCase());
     if (finalCollides) {
       blockingErrors.push(
         `Target name collision: '${targetName}' (from GitLab project '${project.pathWithNamespace}') already exists or was claimed by another selected repo.`,
@@ -63,7 +70,8 @@ export function buildRepoPlans(projects: GitlabProject[], options: MigrationOpti
       topics: options.topicsFromGitlabTopics ? project.topics : [],
       skip,
       skipReason,
-      collision: finalCollides,
+      collision: finalCollides || syncTarget,
+      syncTarget,
     });
   }
 

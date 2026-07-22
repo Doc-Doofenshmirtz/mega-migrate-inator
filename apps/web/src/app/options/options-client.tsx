@@ -28,6 +28,7 @@ interface PreviewRow {
   visibility: "private" | "public" | "inherit";
   collision: boolean;
   skip: boolean;
+  syncTarget: boolean;
   manuallyNamed: boolean;
 }
 
@@ -39,7 +40,8 @@ function computePreviewRows(
   defaultVisibility: MigrationOptions["visibility"],
   overrides: Record<string, RepoOverride>,
 ): PreviewRow[] {
-  const claimed = new Set(existingNames.map((n) => n.toLowerCase()));
+  const preExistingLower = new Set(existingNames.map((n) => n.toLowerCase()));
+  const claimed = new Set(preExistingLower);
   const rows: PreviewRow[] = [];
 
   for (const repo of repos) {
@@ -55,17 +57,24 @@ function computePreviewRows(
 
     let targetName = baseName;
     let skip = false;
+    let syncTarget = false;
 
     if (!manuallyNamed && isCaseInsensitiveCollision(baseName, claimed)) {
-      if (collisionPolicy === "skip") {
+      // "sync" only makes sense against a repo that pre-dated this run — colliding with
+      // another selected repo (claimed earlier in this same preview pass) has no existing
+      // target to sync against, so that case still falls through to suffix.
+      const preExisting = isCaseInsensitiveCollision(baseName, preExistingLower);
+      if (collisionPolicy === "sync" && preExisting) {
+        syncTarget = true;
+      } else if (collisionPolicy === "skip") {
         skip = true;
-      } else if (collisionPolicy === "suffix") {
+      } else if (collisionPolicy === "suffix" || collisionPolicy === "sync") {
         targetName = suffixedName(baseName, claimed);
       }
       // "fail": leave targetName = baseName; the still-colliding check below flags it.
     }
 
-    const collision = !skip && claimed.has(targetName.toLowerCase());
+    const collision = !skip && !syncTarget && claimed.has(targetName.toLowerCase());
     if (!skip) claimed.add(targetName.toLowerCase());
 
     rows.push({
@@ -74,6 +83,7 @@ function computePreviewRows(
       visibility: override?.visibility ?? defaultVisibility,
       collision,
       skip,
+      syncTarget,
       manuallyNamed,
     });
   }
@@ -249,8 +259,8 @@ export function OptionsClient() {
             </div>
             <div>
               <Label>On name collision</Label>
-              <div className="flex gap-4 text-sm">
-                {(["fail", "skip", "suffix"] as const).map((c) => (
+              <div className="flex flex-wrap gap-4 text-sm">
+                {(["fail", "skip", "suffix", "sync"] as const).map((c) => (
                   <label key={c} className="flex items-center gap-1.5">
                     <input
                       type="radio"
@@ -263,7 +273,12 @@ export function OptionsClient() {
                 ))}
               </div>
               <p className="text-xs mt-1" style={{ color: "var(--color-muted)" }}>
-                fail: block the whole plan · skip: leave that repo out · suffix: append -migrated
+                fail: block the whole plan · skip: leave that repo out · suffix: append -migrated ·
+                sync: update the existing repo in place (pushes GitLab&apos;s branches/tags, CI variables,
+                and branch protection onto it — branches GitHub is behind on fast-forward safely,
+                branches that diverged are overwritten with GitLab&apos;s version). Only applies when the
+                collision is against a repo that already existed on GitHub before this run — two selected
+                repos landing on the same name still fall back to suffix.
               </p>
             </div>
           </CardContent>
@@ -436,7 +451,8 @@ export function OptionsClient() {
                     <td className="px-3 py-2">
                       {row.skip && <Badge tone="warning">skipped</Badge>}
                       {row.collision && <Badge tone="danger">name collision</Badge>}
-                      {!row.skip && !row.collision && <Badge tone="success">ok</Badge>}
+                      {row.syncTarget && <Badge tone="accent">will sync into existing repo</Badge>}
+                      {!row.skip && !row.collision && !row.syncTarget && <Badge tone="success">ok</Badge>}
                     </td>
                   </tr>
                 ))}

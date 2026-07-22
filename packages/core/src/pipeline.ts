@@ -25,6 +25,8 @@ import {
   checkFullHistoryLargeFiles,
   getMirrorSizeBytes,
   scanCommittedSensitiveFiles,
+  fetchRef,
+  isAncestor,
   SIZE_THRESHOLDS,
 } from "./git/mirror.js";
 import { detectLfs, lfsFetchAll, lfsPushAll, isGitLfsInstalled, migrateLargeFilesToLfs } from "./git/lfs.js";
@@ -65,6 +67,15 @@ export interface RepoMigrationResult {
   sensitiveFiles: string[];
   warnings: string[];
   verifyDiff?: { missingOnTarget: string[]; extraOnTarget: string[]; shaMismatch: string[] };
+  /** Only set for `collision: sync` targets that had an actual diff to push. */
+  syncSummary?: {
+    newRefs: string[];
+    fastForwardedRefs: string[];
+    /** Branch had commits on GitHub that GitLab didn't; overwritten with GitLab's version. */
+    divergedRefs: string[];
+    /** Existed only on GitHub; removed by the mirror push. */
+    deletedOnTarget: string[];
+  };
   error?: string;
 }
 
@@ -136,6 +147,15 @@ export async function migrateRepo(ctx: RunContext, plan: RepoPlan): Promise<Repo
       };
     } else {
       targetRepo = await step("create_target", async () => {
+        if (plan.syncTarget) {
+          const existing = await getRepo(ctx.githubOctokit, plan.targetOwner, plan.targetName);
+          return {
+            id: existing.id,
+            fullName: existing.full_name,
+            htmlUrl: existing.html_url,
+            defaultBranch: existing.default_branch ?? "main",
+          };
+        }
         const ownerType = await detectOwnerType(ctx.githubOctokit, plan.targetOwner);
         return createRepo(ctx.githubOctokit, ownerType, {
           owner: plan.targetOwner,
@@ -176,9 +196,13 @@ export async function migrateRepo(ctx: RunContext, plan: RepoPlan): Promise<Repo
       result.warnings.push(msg);
       state.addWarning(sourcePath, msg);
     }
-    const largeFiles = ctx.deepSizeCheck
-      ? await checkFullHistoryLargeFiles(workdir)
-      : await checkHeadLargeFiles(workdir);
+    // HEAD-only is cheap but blind to files that only live on non-default branches (e.g. a
+    // stale `master` alongside `main`) — auto_lfs's whole job is to make the push succeed,
+    // so it needs the full-history scan or it'll rewrite nothing and the push fails anyway.
+    const largeFiles =
+      ctx.deepSizeCheck || cfg.migrate.large_files === "auto_lfs"
+        ? await checkFullHistoryLargeFiles(workdir)
+        : await checkHeadLargeFiles(workdir);
     let forcedLfs = false;
     if (largeFiles.length === 0) {
       state.finishStep(sourcePath, "large_file_lfs_migrate", "skipped");
@@ -241,12 +265,65 @@ export async function migrateRepo(ctx: RunContext, plan: RepoPlan): Promise<Repo
     }
 
     // 6. mirror_push
-    if (!state.isStepDone(sourcePath, "mirror_push", ctx.force)) {
+    // For a sync target, work out what would actually change before pushing: skip the
+    // push entirely if GitHub already matches GitLab, and classify each changed branch as
+    // a safe fast-forward vs. a divergence (GitHub had commits GitLab didn't, about to be
+    // overwritten) so the report says exactly what happened rather than just "pushed".
+    let skipPushNoChanges = false;
+    if (plan.syncTarget && !state.isStepDone(sourcePath, "mirror_push", ctx.force)) {
+      const sourceRefsBeforePush = await listRefs(workdir);
+      const targetRefsBeforePush = await lsRemoteRefs(githubRemoteUrl, false);
+      const preDiff = diffRefMaps(sourceRefsBeforePush, targetRefsBeforePush);
+      if (preDiff.matches) {
+        skipPushNoChanges = true;
+        const msg = "target already in sync with GitLab source; nothing to transfer";
+        result.warnings.push(msg);
+        state.addWarning(sourcePath, msg);
+      } else {
+        const divergedRefs: string[] = [];
+        const fastForwardedRefs: string[] = [];
+        for (const ref of preDiff.shaMismatch) {
+          if (!ref.startsWith("refs/heads/")) continue; // tags etc: reported as updated, no ancestry check
+          const targetSha = targetRefsBeforePush[ref]!;
+          const sourceSha = sourceRefsBeforePush[ref]!;
+          const localRef = `refs/glab2gh-sync-check/${ref.slice("refs/heads/".length)}`;
+          try {
+            await fetchRef(workdir, githubRemoteUrl, ref, localRef);
+            const ff = await isAncestor(workdir, targetSha, sourceSha);
+            (ff ? fastForwardedRefs : divergedRefs).push(ref);
+          } catch {
+            divergedRefs.push(ref); // couldn't verify safely — treat conservatively as diverged
+          }
+        }
+        result.syncSummary = {
+          newRefs: preDiff.missingOnTarget,
+          fastForwardedRefs,
+          divergedRefs,
+          deletedOnTarget: preDiff.extraOnTarget,
+        };
+        if (divergedRefs.length > 0) {
+          const msg = `${divergedRefs.length} branch(es) had commits on GitHub that GitLab didn't — overwritten with GitLab's version: ${divergedRefs.join(", ")}`;
+          result.warnings.push(msg);
+          state.addWarning(sourcePath, msg);
+        }
+        if (preDiff.extraOnTarget.length > 0) {
+          const msg = `${preDiff.extraOnTarget.length} ref(s) exist only on GitHub and were deleted by the mirror push: ${preDiff.extraOnTarget.join(", ")}`;
+          result.warnings.push(msg);
+          state.addWarning(sourcePath, msg);
+        }
+      }
+    }
+
+    if (skipPushNoChanges) {
+      state.finishStep(sourcePath, "mirror_push", "skipped");
+    } else if (!state.isStepDone(sourcePath, "mirror_push", ctx.force)) {
       await step("mirror_push", () => mirrorPush(workdir, githubRemoteUrl));
     }
 
     // 7. lfs_push
-    if (doLfs && (await isGitLfsInstalled())) {
+    if (skipPushNoChanges) {
+      state.finishStep(sourcePath, "lfs_push", "skipped");
+    } else if (doLfs && (await isGitLfsInstalled())) {
       if (!state.isStepDone(sourcePath, "lfs_push", ctx.force)) {
         await step("lfs_push", () => lfsPushAll(workdir, githubRemoteUrl));
       }

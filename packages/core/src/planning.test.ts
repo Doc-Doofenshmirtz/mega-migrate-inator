@@ -93,6 +93,24 @@ describe("computeRepoPlans", () => {
     expect(plans[1]!.targetName).toBe("group-proj-a-migrated");
   });
 
+  it("marks the repo as a sync target when collision policy is 'sync' and the name pre-existed on GitHub", () => {
+    const cfg = baseConfig({ collision: "sync" });
+    const plans = computeRepoPlans([project({})], cfg, new Set(["group-proj-a"]));
+    expect(plans[0]!.syncTarget).toBe(true);
+    expect(plans[0]!.skip).toBe(false);
+    expect(plans[0]!.targetName).toBe("group-proj-a");
+  });
+
+  it("falls back to suffix under 'sync' when the collision is only against another project in this same run", () => {
+    const cfg = baseConfig({ collision: "sync" });
+    const p1 = project({ id: 1, name: "proj-a", pathWithNamespace: "group/proj-a", namespaceFullPath: "group" });
+    const p2 = project({ id: 2, name: "proj-a", pathWithNamespace: "group2/proj-a", namespaceFullPath: "group" });
+    const plans = computeRepoPlans([p1, p2], cfg, new Set());
+    expect(plans[0]!.syncTarget).toBe(false);
+    expect(plans[1]!.syncTarget).toBe(false);
+    expect(plans[1]!.targetName).toBe("group-proj-a-migrated");
+  });
+
   it("maps visibility per the 'inherit' policy", () => {
     const cfg = baseConfig({ visibility: "inherit" });
     const pub = project({ id: 1, name: "proj-pub", pathWithNamespace: "group/proj-pub", visibility: "public" });

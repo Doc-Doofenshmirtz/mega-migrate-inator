@@ -127,5 +127,38 @@ apps/web/        @glab2gh/web — the Next.js control panel + the in-process
   refs — before pushing, so the push succeeds. That rewrite only touches the
   local clone that gets pushed to GitHub; the GitLab source history is never
   modified. Requires `git-lfs` on `PATH`; falls back to warn-only otherwise.
+  Note: the "files over 100MB" check only looks where it's cheap to look —
+  `HEAD`'s tree by default, or full history when `large_files: auto_lfs` is
+  set (since auto_lfs's whole job is making the push succeed, a check that
+  can miss files on non-default branches defeats the point).
+
+## Handling a name collision: `target.collision: sync`
+
+`fail` / `skip` / `suffix` all treat a name collision as something to avoid.
+`sync` treats it as an update: if the target name already existed on GitHub
+*before this run* (not just claimed by another selected repo in the same
+run — there's nothing to sync against there, so that case still falls back
+to `suffix`), glab2gh pushes into it in place instead of skipping or
+renaming:
+
+1. `create_target` fetches the existing repo instead of creating a new one.
+2. Before pushing, glab2gh diffs GitLab's refs against the target's current
+   refs. If they already match, the push is skipped entirely — nothing to
+   transfer.
+3. Otherwise it pushes (same `git push --mirror` as any other migration) and
+   classifies what changed for the report: branches GitHub was simply behind
+   on are a **fast-forward** (no data lost); branches where GitHub had
+   commits GitLab didn't are **diverged** — GitLab's version wins and the
+   GitHub-only commits are overwritten (recoverable via GitHub's reflog for a
+   while, but not by glab2gh); refs that exist only on GitHub are **deleted**
+   (standard `--mirror` semantics).
+4. CI variables and branch protection are then pushed/reapplied from GitLab
+   same as any non-skipped repo — sync doesn't special-case those, it just
+   stops skipping the repo.
+
+Every diverged branch and every deleted-on-target ref is called out
+explicitly in the run's warnings and in the migration report, so an
+overwrite is never silent even though it's the default resolution for that
+case.
 
 *Curse you, edge cases! But at least you're documented.*

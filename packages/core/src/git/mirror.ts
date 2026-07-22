@@ -58,6 +58,25 @@ export async function mirrorPush(dir: string, remoteUrl: string): Promise<void> 
   await run("git", ["push", "--mirror", remoteUrl], { cwd: dir, label: "git push --mirror (target)" });
 }
 
+/** Fetches a single ref from `remoteUrl` into `localRef` in `dir`, without touching any other ref. */
+export async function fetchRef(dir: string, remoteUrl: string, ref: string, localRef: string): Promise<void> {
+  await run("git", ["fetch", remoteUrl, `${ref}:${localRef}`], { cwd: dir, label: "git fetch (target ref, sync check)" });
+}
+
+/** True if `ancestorSha` is reachable from `descendantSha` (i.e. updating ancestor -> descendant is a fast-forward). Both objects must already exist in `dir`. */
+export async function isAncestor(dir: string, ancestorSha: string, descendantSha: string): Promise<boolean> {
+  try {
+    await run("git", ["merge-base", "--is-ancestor", ancestorSha, descendantSha], {
+      cwd: dir,
+      label: "git merge-base --is-ancestor",
+    });
+    return true;
+  } catch (err) {
+    if (err instanceof RedactedExecError && err.exitCode === 1) return false;
+    throw err;
+  }
+}
+
 export async function lsRemoteRefs(remoteUrlOrDir: string, isLocalDir: boolean): Promise<RefMap> {
   if (isLocalDir) {
     return listRefs(remoteUrlOrDir);

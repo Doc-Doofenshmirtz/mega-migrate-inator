@@ -13,6 +13,8 @@ export interface RepoPlan {
   skip: boolean;
   skipReason?: string;
   collision: boolean;
+  /** True when `collision: sync` matched a repo that already existed on GitHub before this run — update it in place. */
+  syncTarget: boolean;
 }
 
 export class CollisionError extends Error {}
@@ -41,23 +43,33 @@ export function computeRepoPlans(
     let targetName = baseName;
     let skip = false;
     let skipReason: string | undefined;
+    let syncTarget = false;
     const collision = isCaseInsensitiveCollision(baseName, claimedThisRun);
 
     if (collision) {
-      switch (cfg.target.collision) {
-        case "fail":
-          throw new CollisionError(
-            `Target name collision: '${baseName}' (from GitLab project '${project.pathWithNamespace}') ` +
-              `already exists or was already claimed by another project in this run. ` +
-              `Set target.collision to 'skip' or 'suffix', or adjust target.name_template.`,
-          );
-        case "skip":
-          skip = true;
-          skipReason = `target name '${baseName}' collides with an existing repo`;
-          break;
-        case "suffix":
-          targetName = suffixedName(baseName, claimedThisRun);
-          break;
+      // "sync" only makes sense against a repo that pre-dated this run — two GitLab
+      // projects flattening to the same name (claimed earlier in *this* run) have no
+      // existing target content to sync against, so that case falls through to suffix.
+      const preExisting = isCaseInsensitiveCollision(baseName, existingGithubNames);
+      if (cfg.target.collision === "sync" && preExisting) {
+        syncTarget = true;
+      } else {
+        switch (cfg.target.collision) {
+          case "fail":
+            throw new CollisionError(
+              `Target name collision: '${baseName}' (from GitLab project '${project.pathWithNamespace}') ` +
+                `already exists or was already claimed by another project in this run. ` +
+                `Set target.collision to 'skip', 'suffix', or 'sync', or adjust target.name_template.`,
+            );
+          case "skip":
+            skip = true;
+            skipReason = `target name '${baseName}' collides with an existing repo`;
+            break;
+          case "suffix":
+          case "sync":
+            targetName = suffixedName(baseName, claimedThisRun);
+            break;
+        }
       }
     }
 
@@ -73,6 +85,7 @@ export function computeRepoPlans(
       skip,
       skipReason,
       collision,
+      syncTarget,
     });
   }
 

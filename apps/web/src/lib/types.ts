@@ -21,7 +21,7 @@ export interface MigrationOptions {
   visibility: "private" | "public" | "inherit";
   nameTemplate: string;
   topicsFromGitlabTopics: boolean;
-  collision: "fail" | "skip" | "suffix";
+  collision: "fail" | "skip" | "suffix" | "sync";
   ciVariables: boolean;
   ciVariablesAs: "secrets" | "variables" | "auto";
   groupVariables: boolean;
