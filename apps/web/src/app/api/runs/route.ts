@@ -21,7 +21,7 @@ export const OptionsSchema = z.object({
   visibility: z.enum(["private", "public", "inherit"]),
   nameTemplate: z.string().min(1),
   topicsFromGitlabTopics: z.boolean(),
-  collision: z.enum(["fail", "skip", "suffix"]),
+  collision: z.enum(["fail", "skip", "suffix", "sync"]),
   ciVariables: z.boolean(),
   ciVariablesAs: z.enum(["secrets", "variables", "auto"]),
   groupVariables: z.boolean(),
