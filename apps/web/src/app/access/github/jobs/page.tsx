@@ -3,6 +3,7 @@ import { listAccessJobs } from "@/server/accessJobs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
+import { AutoRefresh } from "@/components/auto-refresh";
 
 export const dynamic = "force-dynamic";
 
@@ -13,12 +14,15 @@ const STATUS_TONE: Record<string, BadgeTone> = {
   cancelled: "warning",
   interrupted: "danger",
 };
+const ACTIVE_STATUSES = new Set(["running", "cancelling"]);
 
 export default function GithubAccessJobsPage() {
   const jobs = listAccessJobs("github");
+  const hasActive = jobs.some((job) => ACTIVE_STATUSES.has(job.status));
 
   return (
     <div className="space-y-6">
+      <AutoRefresh active={hasActive} />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold">GitHub access jobs</h1>

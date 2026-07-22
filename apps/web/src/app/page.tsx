@@ -4,6 +4,7 @@ import { listRuns } from "@/server/runs";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge, type BadgeTone } from "@/components/ui/badge";
+import { AutoRefresh } from "@/components/auto-refresh";
 
 export const dynamic = "force-dynamic";
 
@@ -20,8 +21,11 @@ export default async function DashboardPage() {
   const runs = listRuns();
   const activeStatuses = new Set(["running", "cancelling"]);
 
+  const hasActive = runs.some((run) => activeStatuses.has(run.status));
+
   return (
     <div className="space-y-6">
+      <AutoRefresh active={hasActive} />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-semibold">Runs</h1>

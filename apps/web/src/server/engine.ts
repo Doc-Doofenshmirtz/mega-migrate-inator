@@ -16,11 +16,43 @@ class JobEngine {
     this.recoverInterruptedRuns();
   }
 
-  /** On boot, anything left "running"/"cancelling" from a previous process died mid-flight. */
+  /**
+   * On boot, anything left "running"/"cancelling" from a previous process died mid-flight.
+   * Marking overall_status alone isn't enough: whichever step was active when the process
+   * died is still sitting at status "running" inside steps_json (nothing ever set it to
+   * anything else), so the run page would show "interrupted" + a pulsing "running" step
+   * dot at the same time forever. Flip that step to "failed" too, so the display is
+   * consistent and a resume knows to redo it (isStepDone only treats success/skipped as done).
+   *
+   * Also repairs rows left over from *before* this fix existed: a run whose overall_status
+   * was already flipped to 'interrupted' by the old code, but whose steps_json still has a
+   * step frozen at "running" from that older, incomplete recovery pass.
+   */
   private recoverInterruptedRuns(): void {
     const db = getDb();
     db.prepare("UPDATE runs SET status = 'interrupted' WHERE status IN ('running', 'cancelling')").run();
-    db.prepare("UPDATE repo_tasks SET overall_status = 'interrupted' WHERE overall_status = 'in_progress'").run();
+
+    const candidates = db
+      .prepare("SELECT run_id, repo_path, overall_status, steps_json FROM repo_tasks WHERE overall_status IN ('in_progress', 'interrupted')")
+      .all() as unknown as Array<{ run_id: string; repo_path: string; overall_status: string; steps_json: string }>;
+    const patch = db.prepare(
+      "UPDATE repo_tasks SET overall_status = 'interrupted', steps_json = ? WHERE run_id = ? AND repo_path = ?",
+    );
+    for (const row of candidates) {
+      const steps = JSON.parse(row.steps_json) as Record<string, { status: string; finishedAt?: string; error?: string }>;
+      let changed = false;
+      for (const step of Object.values(steps)) {
+        if (step.status === "running") {
+          step.status = "failed";
+          step.finishedAt = new Date().toISOString();
+          step.error = "interrupted — the server restarted while this step was in progress";
+          changed = true;
+        }
+      }
+      if (changed || row.overall_status === "in_progress") {
+        patch.run(JSON.stringify(steps), row.run_id, row.repo_path);
+      }
+    }
   }
 
   isActive(runId: string): boolean {
