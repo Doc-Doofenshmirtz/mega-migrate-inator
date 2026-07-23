@@ -23,7 +23,7 @@ export interface SecretMigrationOutcome {
   fellBackToRepoSecret: boolean;
 }
 
-async function encryptForRepo(value: string, publicKey: string): Promise<string> {
+export async function encryptForRepo(value: string, publicKey: string): Promise<string> {
   await sodium.ready;
   const messageBytes = sodium.from_string(value);
   const keyBytes = sodium.from_base64(publicKey, sodium.base64_variants.ORIGINAL);

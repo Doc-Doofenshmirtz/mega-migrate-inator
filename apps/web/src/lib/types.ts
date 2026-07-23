@@ -60,6 +60,19 @@ export interface GithubBranchRef {
   protected: boolean;
 }
 
+/** Actions repo secret — GitHub never returns the value, only metadata; it can be overwritten but not read. */
+export interface GithubActionsSecretRef {
+  name: string;
+  updatedAt: string;
+}
+
+/** Actions repo variable — unlike secrets, GitHub stores and returns the plaintext value. */
+export interface GithubActionsVariableRef {
+  name: string;
+  value: string;
+  updatedAt: string;
+}
+
 export interface GithubTreeEntry {
   name: string;
   path: string;
